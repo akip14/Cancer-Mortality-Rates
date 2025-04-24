@@ -1,0 +1,243 @@
+---
+title: 'STAT1006 Regression and Nonparametric Inference '
+author: ' Computer Lab 6: Solutions'
+output:
+  word_document: default
+  html_notebook:
+    theme: flatly
+  html_document:
+    highlight: haddock
+    theme: flatly
+  pdf_document: default
+---
+
+```{r}
+print(load("cancer.RData"))
+library(PerformanceAnalytics)
+library("magrittr")
+cancer_project <- cancer_project[-c(18,13,9)]
+df <- na.omit(cancer_project)
+df$row <- c(1:1534) 
+  
+df1 <- df[1:6]
+df2 <- df[c(3,7:11)]
+df3 <- df[c(3,12:16)]
+df4 <- df[c(3,17:21)]
+df5 <- df[c(3,22:26)]
+df6 <- df[c(3,27:31)]
+
+pairs(df1)
+chart.Correlation(df1)
+pairs(df2)
+chart.Correlation(df2)
+pairs(df3)
+chart.Correlation(df3)
+pairs(df4)
+chart.Correlation(df4)
+pairs(df5)
+chart.Correlation(df5)
+pairs(df6)
+chart.Correlation(df6)
+
+```
+
+
+
+```{r}
+plot(df$mortality ~ df$PctBachDeg25_Over, xlim=c(0,50))
+text(df$PctBachDeg25_Over,df$mortality, labels = df$row, pos = 4, cex=0.9)
+plot(df$mortality ~ df$incidenceRate)
+plot(df$mortality ~ df$PctPublicCoverageAlone)
+plot(df$mortality ~ df$PctHS25_Over)
+```
+
+
+```{r}
+var <- (df$povertyPercent)^2
+plot(df$mortality ~ var)
+
+plot(df$mortality ~ df$PctHS25_Over)
+
+plot(df$mortality ~ df$avgDeathsPerYear)
+plot(df$mortality ~ log(df$avgDeathsPerYear))
+
+lm1 <- lm(df$mortality ~ df$avgDeathsPerYear)
+summary(lm1)
+
+
+```
+
+
+```{r}
+slm1 <- lm(df$mortality ~ df$PctBachDeg25_Over)
+summary(slm1)
+conf.mean=predict(slm1,interval="confidence",level=0.95)
+plot(df$mortality ~ df$PctBachDeg25_Over, main = "Simple Linear Regression")
+abline(slm1, col = "red", lwd =2)
+matlines(sort(df$PctBachDeg25_Over),
+      conf.mean[order(df$PctBachDeg25_Over), 2:3],
+      lwd = 2, col = "blue",
+	   lty = 1)
+  
+```
+
+
+```{r}
+plot(slm1)
+
+
+res=slm1$residuals
+std.res=rstandard(slm1)  ## standardised residuals
+
+
+Leverage<-hatvalues(slm1)
+tail(sort(Leverage))
+
+Cooks.Dist<-cooks.distance(slm1)
+tail(sort(Cooks.Dist))
+
+
+p=1
+n=1534
+plot(std.res~Leverage, xlab = "Leverage (hat matrix)")
+text(Leverage,std.res, labels = df$row, pos = 1, cex=0.9)
+abline(v=2*(p+1)/n, lty=1,col=3)  ## add a vertical line for the cut-off Leverage
+plot(std.res~Cooks.Dist)
+text(Cooks.Dist,std.res, labels = df$row, pos = 1, cex=0.9, xlim=c(0,2))
+abline(v=2*(p+1)/(n-(p+1)), lty=1, col=2)  ## add a vertical line for the cut-off Cooks
+
+plot(cooks.distance(slm1), xlab = "Locations", ylab = "Cook's distance")
+abline(h=2*(p+1)/(n-(p+1)), lty=1, col=2)
+with(df, text(cooks.distance(slm1), labels = df$row, pos = 4))
+
+```
+
+
+```{r}
+par(mfrow=c(2,2))
+par(mar = c(5, 4, 1, 1) + 0.1) # This isn't necessary, but gives better margin spacing around the plot
+plot(slm1)
+
+hist(slm1$residuals, main = "Histogram of residuals")
+```
+
+
+```{r}
+lm.all=lm(mortality~.,data=df)  ## full model
+
+lm.0 <- lm(mortality ~ 1, data = df) # Set up simplest model to start with
+lm.forward <- step(lm.0, scope = formula(lm.all), direction = "forward", trace = 0)
+summary(lm.forward)
+par(mfrow=c(2,2))
+par(mar = c(5, 4, 1, 1) + 0.1)
+plot(lm.forward)
+hist(lm.forward$residuals, main = "Histogram of Residuals")
+
+```
+
+```{r}
+par(mfrow = c(1, 3))
+par(cex.axis = 1.5)
+par(cex.lab = 1.5)
+
+AllSubsets <- regsubsets(mortality ~ ., nvmax = 20, nbest = 1, data = df)
+AllSubsets.summary <- summary(AllSubsets)
+plot(1:20, AllSubsets.summary$adjr2, xlab = "subset size", ylab = "adjusted R-squared", type = "b")
+plot(1:20, AllSubsets.summary$cp, xlab = "subset size", ylab = "Mallows' Cp", type = "b")
+abline(0,1,col=2)
+plot(1:20, AllSubsets.summary$bic, xlab = "subset size", ylab = "BIC", type = "b")
+
+summary(AllSubsets)
+
+lm14 <- lm(df$mortality ~ df$avgAnnCount + df$incidenceRate + df$MedianAgeFemale + df$PercentMarried + df$PctNoHS18_24 + df$PctHS25_Over + df$PctBachDeg25_Over + df$PctEmployed16_Over + df$PctPrivateCoverage + df$PctMarriedHouseholds + df$PctOtherRace + df$BirthRate)
+
+lm15 <- lm(df$mortality ~ df$avgDeathsPerYear + df$avgAnnCount + df$incidenceRate + df$MedianAgeFemale + df$PercentMarried + df$PctNoHS18_24 + df$PctHS25_Over + df$PctBachDeg25_Over + df$PctEmployed16_Over + df$PctPrivateCoverage + df$PctMarriedHouseholds + df$PctOtherRace + df$BirthRate)
+
+
+summary(lm14)
+summary(lm15)
+par(mfrow=c(2,2))
+par(mar = c(5, 4, 1, 1) + 0.1)
+plot(lm14)
+
+```
+
+
+
+```{r}
+res=lm.forward$residuals
+std.res=rstandard(lm.forward)  ## standardised residuals
+par(mfrow=c(2,2))## plotting 3 plots to check normality and constant variance
+par(mar = c(5, 4, 1, 1) + 0.1)
+qqnorm(std.res)
+qqline(std.res)
+plot(std.res,xlab="Time", ylab="Standardised Residuals")
+plot(lm.forward$fitted.values,std.res, xlab="Fitted Values", ylab="Standardised Residuals")
+par(mfrow=c(1,1))
+
+
+Leverage<-hatvalues(lm.forward)
+tail(sort(Leverage))
+
+Cooks.Dist<-cooks.distance(lm.forward)
+tail(sort(Cooks.Dist))
+
+p=22
+n=1534
+par(mfrow=c(1,2))
+par(mgp=c(1.75,0.75,0))
+par(mar=c(3,3,2,1))
+plot(std.res~Leverage)
+abline(v=2*(p+1)/n, lty=1,col=3)  ## add a vertical line for the cut-off Leverage
+plot(std.res~Cooks.Dist)
+abline(v=2*(p+1)/(n-(p+1)), lty=1, col=2)  ## add a vertical line for the cut-off Cooks
+
+plot(cooks.distance(lm.forward), xlab = "Locations", ylab = "Cook's distance")
+abline(h=2*(p+1)/(n-(p+1)), lty=1, col=2)
+with(df, text(cooks.distance(lm.forward), labels = row.names(df), pos = 4))
+
+```
+
+```{r}
+di=2*(p+1)/(n-(p+1))  ## cut-off 
+# Defining outliers based on 2*(p+1)/(n-(p+1)) criteria
+df$outlier <- ifelse(Cooks.Dist < di, "keep","delete")
+
+
+dfnew <- subset(df, outlier=="keep")
+dfnew <- dfnew[-32]
+
+lmnew.all=lm(mortality~.,data=dfnew)  ## full model
+summary(lmnew.all)
+
+lmnew.0 <- lm(mortality ~ 1, data = dfnew) # Set up simplest model to start with
+lmnew.forward <- step(lmnew.0, scope = formula(lmnew.all), direction = "forward", trace = 0)
+summary(lmnew.forward)
+
+```
+
+
+
+
+
+
+
+```{r}
+par(mfrow = c(1, 3))
+par(cex.axis = 1.5)
+par(cex.lab = 1.5)
+Forward <- regsubsets(mortality ~ ., nbest = 1, data = df,method="forward")
+Forward.summary <- summary(Forward)
+nn<-nrow(Forward.summary$outmat)
+plot(1:nn, Forward.summary$adjr2, xlab = "subset size", ylab = "adjusted R-squared", type = "b")
+plot(1:nn, Forward.summary$cp, xlab = "subset size", ylab = "Mallows' Cp", type = "b")
+abline(0,1, col=2)
+plot(1:nn, Forward.summary$bic, xlab = "subset size", ylab = "BIC", type = "b")
+
+```
+
+```{r}
+mlm1 <- lm(cbind(mortality, avgAnnCount) ~ ., data = df)
+summary(mlm1)
+```
+
